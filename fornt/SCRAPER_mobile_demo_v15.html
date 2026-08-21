@@ -173,6 +173,16 @@
       position: relative;
     }
 
+    /* 채팅 모드(업로드/검색)에서는 content 자체를 스크롤하지 않고
+       내부 메시지 영역만 스크롤해서 composer가 하단에 고정되도록 함 */
+    .app.chat-mode .content {
+      overflow: hidden;
+      padding-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
     .notice {
       background: #f8fafc;
       color: #6b7684;
@@ -239,9 +249,29 @@
       display: none;
       height: 100%;
       flex-direction: column;
+      min-height: 0;
     }
 
     .chat-wrap.active { display: flex; }
+
+    /* 메시지 영역만 스크롤 */
+    .chat-wrap.active > #uploadMessages,
+    .chat-wrap.active > #retrieveMessages {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      min-height: 0;
+      padding-bottom: 8px;
+    }
+
+    /* composer는 흐름 마지막에 고정 배치 */
+    .chat-wrap.active > .composer {
+      flex: 0 0 auto;
+      position: static;
+      left: auto;
+      right: auto;
+      bottom: auto;
+      margin-top: 10px;
+    }
 
     .empty-state {
       flex: 1;
@@ -252,6 +282,14 @@
       text-align: center;
       padding: 30px 8px 140px;
       width: 100%;
+    }
+
+    /* 채팅 모드에서는 composer가 흐름에 포함되므로 하단 여백/최소높이 축소 */
+    .chat-wrap.active > .empty-state {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 30px 8px;
     }
 
     #retrieveView .empty-state > div {

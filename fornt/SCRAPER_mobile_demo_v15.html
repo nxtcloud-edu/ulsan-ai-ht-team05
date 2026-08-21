@@ -933,7 +933,14 @@
     document.querySelectorAll('.category').forEach(x => x.classList.remove('active'));
     button.classList.add('active');
     currentCategory = button.dataset.cat;
-    loadHomeList();
+
+    // 업로드/검색 화면에서 카테고리를 고르면 홈으로 돌아가 목록을 보여줌
+    // (showMode('home') 내부에서 loadHomeList()를 호출하므로 중복 호출하지 않음)
+    if (currentMode !== 'home') {
+      showMode('home');
+    } else {
+      loadHomeList();
+    }
   }
 
   // 카테고리 클릭(선택) / 삭제(×) 처리 — 하나의 리스너로 통합

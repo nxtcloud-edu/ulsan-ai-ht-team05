@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SCRAPER</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", sans-serif;
+      background: #f4f6f8;
+      color: #191f28;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .phone {
+      width: min(430px, 96vw);
+      height: min(764px, 92vh);
+      aspect-ratio: 9 / 16;
+      background: #fff;
+      border-radius: 30px;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, .12);
+      overflow: hidden;
+      position: relative;
+      border: 1px solid #e8edf2;
+    }
+
+    .app {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .sidebar {
+      width: 132px;
+      height: 100%;
+      background: #f8fafc;
+      border-right: 1px solid #eef1f4;
+      padding: 18px 10px;
+      transition: width .25s ease;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .sidebar.collapsed { width: 52px; }
+
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #8b95a1;
+      margin: 36px 4px 12px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* --- API 연동용 추가 스타일 --- */
+    .msg-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 2px 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .msg-row { display: flex; }
+    .msg-row.user { justify-content: flex-end; }
+    .msg-row.bot { justify-content: flex-start; }
+
+    .bubble {
+      max-width: 82%;
+      border-radius: 16px;
+      padding: 10px 13px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .bubble.user { background: #3182f6; color: #fff; border-bottom-right-radius: 4px; }
+    .bubble.bot { background: #f2f4f6; color: #333d4b; border-bottom-left-radius: 4px; }
+
+    .result-card {
+      max-width: 82%;
+      background: #fff;
+      border: 1px solid #edf0f3;
+      border-radius: 14px;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .result-card img {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: #f4f6f8;
+    }
+    .result-card .rc-body { min-width: 0; }
+    .result-card .rc-cat {
+      font-size: 10px;
+      font-weight: 700;
+      color: #3182f6;
+    }
+    .result-card .rc-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #191f28;
+      margin: 2px 0 3px;
+    }
+    .result-card .rc-summary {
+      font-size: 11.5px;
+      color: #8b95a1;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .result-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .preview-strip {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 0 4px 8px;
+    }
+    .preview-strip.active { display: flex; }
+    .preview-strip img {
+      width: 40px; height: 40px; border-radius: 8px; object-fit: cover;
+    }
+    .preview-strip .pv-name {
+      font-size: 11px; color: #4e5968; flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .preview-strip .pv-remove {
+      border: none; background: transparent; color: #8b95a1; cursor: pointer; font-size: 14px;
+    }
+
+    .home-card-item {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid #edf0f3;
+      background: #fff;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .home-card-item img {
+      width: 48px; height: 48px; border-radius: 10px; object-fit: cover; flex-shrink: 0; background: #f4f6f8;
+    }
+    .home-card-item .hc-cat { font-size: 10px; font-weight: 700; color: #3182f6; }
+    .home-card-item .hc-title { font-size: 13px; font-weight: 700; color: #191f28; margin: 2px 0; }
+    .home-card-item .hc-summary {
+      font-size: 11px; color: #8b95a1; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    .status-text { font-size: 11px; color: #a1a8b3; text-align: center; padding: 8px 0; }
+
+    .category-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .category {
+      border: none;
+      background: transparent;
+      text-align: left;
+      padding: 10px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #4e5968;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .category:hover,
+    .category.active {
+      background: #edf4ff;
+      color: #1b64da;
+      font-weight: 700;
+    }
+
+    .sidebar.collapsed .category,
+    .sidebar.collapsed .sidebar-title {
+      font-size: 0;
+    }
+
+    .sidebar.collapsed .category::before {
+      content: "•";
+      font-size: 18px;
+      color: #8b95a1;
+      display: block;
+      text-align: center;
+    }
+
+    .toggle-sidebar {
+      position: absolute;
+      top: 14px;
+      right: 10px;
+      width: 30px;
+      height: 30px;
+      border: none;
+      background: #fff;
+      border-radius: 9px;
+      box-shadow: none;
+      border: 1px solid #e9edf2;
+      cursor: pointer;
+      font-size: 15px;
+      color: #6b7684;
+    }
+
+    .main {
+      flex: 1;
+      height: 100%;
+      position: relative;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 66px;
+      padding: 16px 16px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #f0f2f5;
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(10px);
+      position: relative;
+      z-index: 5;
+    }
+
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .brand {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.6px;
+      white-space: nowrap;
+    }
+
+    .mode-button {
+      border: none;
+      background: #f2f4f6;
+      color: #4e5968;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 8px 11px;
+      border-radius: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .mode-button:hover { background: #e9edf2; }
+
+    .content {
+      flex: 1;
+      overflow: auto;
+      padding: 24px 16px 112px;
+      position: relative;
+    }
+
+    .notice {
+      background: #f8fafc;
+      color: #6b7684;
+      border-radius: 14px;
+      padding: 13px 15px;
+      font-size: 12px;
+      line-height: 1.55;
+      margin-bottom: 16px;
+      border: 1px solid #eef1f4;
+    }
+
+    .notice strong { color: #333d4b; }
+
+    .home-card {
+      width: 100%;
+      min-height: 142px;
+      border-radius: 20px;
+      border: 1px solid #edf0f3;
+      background: #fff;
+      padding: 20px 18px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      transition: .2s ease;
+      text-align: left;
+    }
+
+    .home-card:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 22px rgba(15, 23, 42, .06);
+      border-color: #dde3ea;
+    }
+
+    .card-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #191f28;
+      letter-spacing: -0.35px;
+    }
+
+    .card-desc {
+      font-size: 12.5px;
+      color: #8b95a1;
+      line-height: 1.55;
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background: #edf4ff;
+      color: #3182f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .chat-wrap {
+      display: none;
+      height: 100%;
+      flex-direction: column;
+    }
+
+    .chat-wrap.active { display: flex; }
+
+    .empty-state {
+      flex: 1;
+      min-height: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 30px 8px 140px;
+      width: 100%;
+    }
+
+    #retrieveView .empty-state > div {
+      width: 100%;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .empty-title {
+      font-size: 19px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.45px;
+    }
+
+    .empty-desc {
+      color: #8b95a1;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .composer {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 18px;
+      border: 1px solid #e2e7ec;
+      background: #fff;
+      border-radius: 20px;
+      padding: 9px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, .07);
+    }
+
+    .composer-top {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .upload-btn {
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 10px;
+      background: #f4f6f8;
+      cursor: pointer;
+      font-size: 17px;
+    }
+
+    .text-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      min-width: 0;
+      padding: 8px 4px;
+      color: #333d4b;
+    }
+
+    .send-btn {
+      border: none;
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: #3182f6;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .composer-note {
+      margin-top: 7px;
+      font-size: 10px;
+      color: #a1a8b3;
+      padding-left: 3px;
+    }
+
+    .home-view { display: block; }
+    .home-view.hidden { display: none; }
+
+    .back-link {
+      display: none;
+      border: none;
+      background: transparent;
+      color: #8b95a1;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 0;
+    }
+
+    .chat-mode .back-link { display: inline-block; }
+
+    @media (max-width: 390px) {
+      .sidebar { width: 115px; }
+      .brand { font-size: 17px; }
+      .mode-button { padding: 7px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="app" id="app">
+      <aside class="sidebar" id="sidebar">
+        <button class="toggle-sidebar" id="toggleSidebar">‹</button>
+
+        <div class="sidebar-title">카테고리</div>
+        <div class="category-list">
+          <button class="category active">전체</button>
+          <button class="category">공부</button>
+          <button class="category">공모전</button>
+          <button class="category">개발</button>
+          <button class="category">여행</button>
+          <button class="category">쇼핑</button>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="brand-wrap">
+            <button class="back-link" id="backHome">←</button>
+            <div class="brand">SCRAPER</div>
+          </div>
+
+          <button class="mode-button" id="modeButton" style="display:none;">불러오기</button>
+        </header>
+
+        <section class="content" id="content">
+          <div class="home-view" id="homeView">
+            <div class="notice">
+              <strong>* 텍스트가 잘 보이는 사진</strong>으로 업로드해 주세요.
+            </div>
+
+            <button class="home-card" id="goUpload">
+              <div class="card-icon">＋</div>
+              <div class="card-title">사진 업로드</div>
+              <div class="card-desc">
+                캡처한 사진을 업로드하고<br />
+                필요한 정보를 자동으로 정리해보세요.
+              </div>
+            </button>
+
+            <button class="home-card" id="goRetrieve">
+              <div class="card-icon">⌕</div>
+              <div class="card-title">정보 불러오기</div>
+              <div class="card-desc">
+                저장해둔 정보에서 원하는 내용을<br />
+                빠르게 찾아볼 수 있어요.
+              </div>
+            </button>
+
+            <div id="homeList"></div>
+          </div>
+
+          <div class="chat-wrap" id="uploadView">
+            <div class="msg-list" id="uploadMsgList">
+              <div class="empty-state" id="uploadEmpty">
+                <div>
+                  <div class="empty-title">사진을 업로드 해주세요</div>
+                  <div class="empty-desc">
+                    캡처 이미지와 함께 설명을 입력하면<br />
+                    저장할 내용을 더 정확히 분류할 수 있어요.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="composer">
+              <div class="preview-strip" id="uploadPreview">
+                <img id="uploadPreviewImg" src="" alt="">
+                <span class="pv-name" id="uploadPreviewName"></span>
+                <button class="pv-remove" id="uploadPreviewRemove">✕</button>
+              </div>
+              <div class="composer-top">
+                <button class="upload-btn" id="uploadPickBtn" title="사진 업로드">＋</button>
+                <input type="file" id="uploadFileInput" accept="image/*" style="display:none;">
+                <input class="text-input" id="uploadTextInput" placeholder="메시지를 입력하세요 (선택)" />
+                <button class="send-btn" id="uploadSendBtn">↑</button>
+              </div>
+              <div class="composer-note">이미지 업로드 + 메모 입력 영역</div>
+            </div>
+          </div>
+
+          <div class="chat-wrap" id="retrieveView">
+            <div class="msg-list" id="retrieveMsgList">
+              <div class="empty-state" id="retrieveEmpty">
+                <div>
+                  <div class="empty-title">찾고 싶은 정보를 입력하세요</div>
+                  <div class="empty-desc">
+                    저장된 텍스트, 세부 내용, URL을<br />
+                    검색 결과로 불러오는 화면입니다.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="composer">
+              <div class="composer-top">
+                <button class="upload-btn" title="사진 업로드" style="visibility:hidden;">＋</button>
+                <input class="text-input" id="retrieveTextInput" placeholder="찾고 싶은 정보를 입력하세요" />
+                <button class="send-btn" id="retrieveSendBtn">↑</button>
+              </div>
+              <div class="composer-note">예: "파스타집 찾아줘", "저장한 여행지 알려줘"</div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+<script>
+  // ===== API 연동 설정 =====
+  // 이 파일을 API 서버(포트 3000)가 서빙하면 상대경로로 충분.
+  // 다른 origin(예: Vite dev 서버)에서 열 경우 아래를 EC2 퍼블릭 주소로 바꿀 것.
+  const API_BASE = window.location.port === '3000'
+    ? ''
+    : 'http://44.200.242.252:3000';
+
+  const sidebar = document.getElementById('sidebar');
+  const toggleSidebar = document.getElementById('toggleSidebar');
+  const app = document.getElementById('app');
+  const homeView = document.getElementById('homeView');
+  const uploadView = document.getElementById('uploadView');
+  const retrieveView = document.getElementById('retrieveView');
+  const goUpload = document.getElementById('goUpload');
+  const goRetrieve = document.getElementById('goRetrieve');
+  const modeButton = document.getElementById('modeButton');
+  const backHome = document.getElementById('backHome');
+  const homeList = document.getElementById('homeList');
+
+  let currentMode = 'home';
+  let currentCategory = '전체';
+
+  toggleSidebar.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    toggleSidebar.textContent = sidebar.classList.contains('collapsed') ? '›' : '‹';
+  });
+
+  function showMode(mode) {
+    currentMode = mode;
+    homeView.classList.toggle('hidden', mode !== 'home');
+    uploadView.classList.toggle('active', mode === 'upload');
+    retrieveView.classList.toggle('active', mode === 'retrieve');
+    app.classList.toggle('chat-mode', mode !== 'home');
+
+    if (mode === 'upload') {
+      modeButton.textContent = '불러오기';
+      modeButton.style.display = '';
+    } else if (mode === 'retrieve') {
+      modeButton.textContent = '사진 업로드';
+      modeButton.style.display = '';
+    } else {
+      modeButton.style.display = 'none';
+      loadHomeList();
+    }
+  }
+
+  goUpload.addEventListener('click', () => showMode('upload'));
+  goRetrieve.addEventListener('click', () => showMode('retrieve'));
+  backHome.addEventListener('click', () => showMode('home'));
+
+  modeButton.addEventListener('click', () => {
+    if (currentMode === 'upload') {
+      showMode('retrieve');
+    } else if (currentMode === 'retrieve') {
+      showMode('upload');
+    } else {
+      showMode('retrieve');
+    }
+  });
+
+  document.querySelectorAll('.category').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.category').forEach(x => x.classList.remove('active'));
+      btn.classList.add('active');
+      currentCategory = btn.textContent.trim();
+      loadHomeList();
+    });
+  });
+
+  // ===== 공통 헬퍼 =====
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[c]);
+  }
+
+  function imgUrl(path) {
+    if (!path) return '';
+    return path.startsWith('http') ? path : API_BASE + path;
+  }
+
+  function appendBubble(listEl, text, who) {
+    const emptyState = listEl.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + who;
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble ' + who;
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    listEl.appendChild(row);
+    listEl.scrollTop = listEl.scrollHeight;
+    return row;
+  }
+
+  function appendStatus(listEl, text) {
+    const emptyState = listEl.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+    const div = document.createElement('div');
+    div.className = 'status-text';
+    div.textContent = text;
+    listEl.appendChild(div);
+    listEl.scrollTop = listEl.scrollHeight;
+    return div;
+  }
+
+  function renderResultCard(item) {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      ${item.image_url ? `<img src="${imgUrl(item.image_url)}" alt="">` : ''}
+      <div class="rc-body">
+        <div class="rc-cat">${escapeHtml(item.category)}</div>
+        <div class="rc-title">${escapeHtml(item.title)}</div>
+        <div class="rc-summary">${escapeHtml(item.summary)}</div>
+      </div>
+    `;
+    return card;
+  }
+
+  function appendResultCards(listEl, items, who) {
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + who;
+    const wrap = document.createElement('div');
+    wrap.className = 'result-list';
+    items.forEach((item) => wrap.appendChild(renderResultCard(item)));
+    row.appendChild(wrap);
+    listEl.appendChild(row);
+    listEl.scrollTop = listEl.scrollHeight;
+  }
+
+  // ===== 업로드 화면 =====
+  const uploadMsgList = document.getElementById('uploadMsgList');
+  const uploadPickBtn = document.getElementById('uploadPickBtn');
+  const uploadFileInput = document.getElementById('uploadFileInput');
+  const uploadTextInput = document.getElementById('uploadTextInput');
+  const uploadSendBtn = document.getElementById('uploadSendBtn');
+  const uploadPreview = document.getElementById('uploadPreview');
+  const uploadPreviewImg = document.getElementById('uploadPreviewImg');
+  const uploadPreviewName = document.getElementById('uploadPreviewName');
+  const uploadPreviewRemove = document.getElementById('uploadPreviewRemove');
+
+  let pendingFile = null;
+
+  uploadPickBtn.addEventListener('click', () => uploadFileInput.click());
+
+  uploadFileInput.addEventListener('change', () => {
+    const file = uploadFileInput.files[0];
+    if (!file) return;
+    setPendingFile(file);
+  });
+
+  function setPendingFile(file) {
+    pendingFile = file;
+    uploadPreviewImg.src = URL.createObjectURL(file);
+    uploadPreviewName.textContent = file.name;
+    uploadPreview.classList.add('active');
+  }
+
+  uploadPreviewRemove.addEventListener('click', () => {
+    pendingFile = null;
+    uploadFileInput.value = '';
+    uploadPreview.classList.remove('active');
+  });
+
+  // 클립보드 붙여넣기(Ctrl+V)도 지원
+  uploadTextInput.addEventListener('paste', (e) => {
+    const items = e.clipboardData?.items || [];
+    for (const it of items) {
+      if (it.type.startsWith('image/')) {
+        setPendingFile(it.getAsFile());
+        e.preventDefault();
+        break;
+      }
+    }
+  });
+
+  async function submitUpload() {
+    const note = uploadTextInput.value.trim();
+    if (!pendingFile) {
+      appendBubble(uploadMsgList, '이미지를 먼저 선택해 주세요.', 'bot');
+      return;
+    }
+
+    appendBubble(uploadMsgList, note ? note : '(이미지 업로드)', 'user');
+    const statusEl = appendStatus(uploadMsgList, '분석 중...');
+
+    const form = new FormData();
+    form.append('image', pendingFile);
+
+    try {
+      const res = await fetch(API_BASE + '/api/items', { method: 'POST', body: form });
+      const json = await res.json();
+      statusEl.remove();
+
+      if (!res.ok) {
+        appendBubble(uploadMsgList, '업로드 실패: ' + (json.error?.message || res.status), 'bot');
+      } else {
+        appendBubble(uploadMsgList, `[${json.category}] ${json.title}\n${json.summary}`, 'bot');
+        appendResultCards(uploadMsgList, [json], 'bot');
+      }
+    } catch (e) {
+      statusEl.remove();
+      appendBubble(uploadMsgList, '에러: ' + e.message, 'bot');
+    }
+
+    pendingFile = null;
+    uploadFileInput.value = '';
+    uploadPreview.classList.remove('active');
+    uploadTextInput.value = '';
+  }
+
+  uploadSendBtn.addEventListener('click', submitUpload);
+  uploadTextInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitUpload();
+  });
+
+  // ===== 검색 화면 =====
+  const retrieveMsgList = document.getElementById('retrieveMsgList');
+  const retrieveTextInput = document.getElementById('retrieveTextInput');
+  const retrieveSendBtn = document.getElementById('retrieveSendBtn');
+
+  async function submitSearch() {
+    const query = retrieveTextInput.value.trim();
+    if (!query) return;
+
+    appendBubble(retrieveMsgList, query, 'user');
+    const statusEl = appendStatus(retrieveMsgList, '검색 중...');
+    retrieveTextInput.value = '';
+
+    try {
+      const res = await fetch(API_BASE + '/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+      const json = await res.json();
+      statusEl.remove();
+
+      if (!res.ok) {
+        appendBubble(retrieveMsgList, '검색 실패: ' + (json.error?.message || res.status), 'bot');
+        return;
+      }
+
+      appendBubble(retrieveMsgList, json.answer, 'bot');
+      if (json.items && json.items.length > 0) {
+        appendResultCards(retrieveMsgList, json.items, 'bot');
+      }
+    } catch (e) {
+      statusEl.remove();
+      appendBubble(retrieveMsgList, '에러: ' + e.message, 'bot');
+    }
+  }
+
+  retrieveSendBtn.addEventListener('click', submitSearch);
+  retrieveTextInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitSearch();
+  });
+
+  // ===== 홈 화면 목록 (카테고리 필터) =====
+  async function loadHomeList() {
+    homeList.innerHTML = '<div class="status-text">불러오는 중...</div>';
+    try {
+      const res = await fetch(API_BASE + '/api/items');
+      const json = await res.json();
+      let items = json.items || [];
+
+      if (currentCategory && currentCategory !== '전체') {
+        items = items.filter((it) => it.category === currentCategory);
+      }
+
+      if (items.length === 0) {
+        homeList.innerHTML = '<div class="status-text">저장된 항목이 없어요.</div>';
+        return;
+      }
+
+      homeList.innerHTML = '';
+      items.forEach((item) => {
+        const card = document.createElement('button');
+        card.className = 'home-card-item';
+        card.innerHTML = `
+          ${item.image_url ? `<img src="${imgUrl(item.image_url)}" alt="">` : ''}
+          <div>
+            <div class="hc-cat">${escapeHtml(item.category)}</div>
+            <div class="hc-title">${escapeHtml(item.title)}</div>
+            <div class="hc-summary">${escapeHtml(item.summary)}</div>
+          </div>
+        `;
+        homeList.appendChild(card);
+      });
+    } catch (e) {
+      homeList.innerHTML = '<div class="status-text">불러오기 실패: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+
+  loadHomeList();
+</script>
+</body>
+</html>

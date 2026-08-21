@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>캡처북 테스트</title>
+</head>
+<body>
+  <h1>캡처북 테스트 페이지</h1>
+
+  <section>
+    <h2>1. 업로드 (Ctrl+V로 이미지 붙여넣기)</h2>
+    <div id="paste-zone" tabindex="0" style="border:2px dashed #888; padding:20px; width:400px;">
+      여기 클릭 후 이미지를 Ctrl+V 로 붙여넣으세요
+    </div>
+    <p id="upload-status"></p>
+    <pre id="upload-result"></pre>
+  </section>
+
+  <section>
+    <h2>2. 저장된 항목 목록</h2>
+    <button id="reload-btn">새로고침</button>
+    <div id="items-list"></div>
+  </section>
+
+  <section>
+    <h2>3. 검색</h2>
+    <input id="search-input" type="text" placeholder="예: 파스타집" style="width:300px;">
+    <button id="search-btn">검색</button>
+    <p id="search-answer"></p>
+    <pre id="search-result"></pre>
+  </section>
+
+  <script>
+    const API_BASE = ''; // same-origin
+
+    function el(id) { return document.getElementById(id); }
+
+    async function uploadImage(blob) {
+      el('upload-status').textContent = '업로드 중...';
+      const form = new FormData();
+      form.append('image', blob, 'pasted.png');
+      try {
+        const res = await fetch(API_BASE + '/api/items', { method: 'POST', body: form });
+        const json = await res.json();
+        if (!res.ok) {
+          el('upload-status').textContent = '실패: ' + (json.error?.message || res.status);
+        } else {
+          el('upload-status').textContent = '성공';
+          el('upload-result').textContent = JSON.stringify(json, null, 2);
+          loadItems();
+        }
+      } catch (e) {
+        el('upload-status').textContent = '에러: ' + e.message;
+      }
+    }
+
+    el('paste-zone').addEventListener('paste', (e) => {
+      const items = e.clipboardData.items;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          uploadImage(item.getAsFile());
+          e.preventDefault();
+          break;
+        }
+      }
+    });
+
+    async function loadItems() {
+      el('items-list').textContent = '로딩중...';
+      try {
+        const res = await fetch(API_BASE + '/api/items');
+        const json = await res.json();
+        renderItems(json.items || []);
+      } catch (e) {
+        el('items-list').textContent = '에러: ' + e.message;
+      }
+    }
+
+    function renderItems(items) {
+      if (items.length === 0) {
+        el('items-list').textContent = '(항목 없음)';
+        return;
+      }
+      el('items-list').innerHTML = items.map((it) => `
+        <div style="border:1px solid #ccc; margin:8px 0; padding:8px;">
+          <div><b>[${it.category}]</b> ${it.title} <small>(${it.id})</small></div>
+          <div>${it.summary || ''}</div>
+          <div><small>tags: ${(it.tags || []).join(', ')}</small></div>
+          ${it.image_url ? `<img src="${it.image_url}" style="max-width:200px; display:block; margin-top:4px;">` : ''}
+        </div>
+      `).join('');
+    }
+
+    el('reload-btn').addEventListener('click', loadItems);
+
+    async function doSearch() {
+      const query = el('search-input').value.trim();
+      if (!query) return;
+      el('search-answer').textContent = '검색 중...';
+      el('search-result').textContent = '';
+      try {
+        const res = await fetch(API_BASE + '/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query })
+        });
+        const json = await res.json();
+        if (!res.ok) {
+          el('search-answer').textContent = '실패: ' + (json.error?.message || res.status);
+        } else {
+          el('search-answer').textContent = json.answer;
+          el('search-result').textContent = JSON.stringify(json.items, null, 2);
+        }
+      } catch (e) {
+        el('search-answer').textContent = '에러: ' + e.message;
+      }
+    }
+
+    el('search-btn').addEventListener('click', doSearch);
+    el('search-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doSearch();
+    });
+
+    loadItems();
+  </script>
+</body>
+</html>
